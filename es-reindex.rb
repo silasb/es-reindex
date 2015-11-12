@@ -3,6 +3,7 @@
 require 'bundler/setup'
 require 'rest-client'
 require 'oj'
+require 'open3'
 
 VERSION = '0.0.4'
 
@@ -34,6 +35,14 @@ while ARGV[0]
 	when '-r' then remove = true
 	when '-f' then frame = ARGV.shift.to_i
         when '-u' then update = true
+	when '--filter'
+
+	  filter = ARGV.shift
+	  require_relative filter
+
+	when '--filter-process'
+	  abort 'Not supported'
+	  #filter_process = ARGV.shift
 	else
 		!src ? (src = arg) : !dst ? (dst = arg) :
 			raise("Unexpected parameter '#{arg}'. Use '-h' for help.")
@@ -145,6 +154,13 @@ while true do
 	bulk = ''
 	data['hits']['hits'].each{|doc|
 		### === implement possible modifications to the document
+
+		if filter_process
+		  out, err, status = Open3.capture3("ruby #{filter_process}", stdin_data: Oj.dump(doc))
+		elsif filter
+		  doc = Filter.new.format_doc(doc)
+		end
+
 		### === end modifications to the document
 		bulk << %Q({"#{bulk_op}": {"_index" : "#{didx}", "_id" : "#{
 				doc['_id']}", "_type" : "#{doc['_type']}"}}\n)
